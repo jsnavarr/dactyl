@@ -908,6 +908,7 @@ def watch(mode, target, only_page="", pdf_file=DEFAULT_PDF_FILE,
                 make_pdf(pdf_file, target=target, bypass_errors=True,
                     only_page=only_page, es_upload=es_upload)
             # SN07062019 ->start
+            # if css or js file changed then copy those to out folder
             elif event.src_path[-4:]=='.css' or event.src_path[-3:]=='.js':
                 try:
                     copy_file(event.src_path, config['out_path']+"/"+event.src_path)
@@ -916,6 +917,17 @@ def watch(mode, target, only_page="", pdf_file=DEFAULT_PDF_FILE,
                 else:
                     print('File {} has been copied to {} folder'.format(event.src_path, config['out_path']))
             # SN07062019 ->end
+            # SN07072019 ->start
+            # if md file changed then render it
+            elif event.src_path[-3:]=='.md':
+                start_file_name=event.src_path.rfind('/')
+                if start_file_name != -1:
+                    start_file_name=start_file_name+1 # to remove '/' from the file name
+                    render_pages(target, mode=mode, bypass_errors=True,
+                                only_page= event.src_path[start_file_name:], es_upload=es_upload)
+                else:
+                    print('Could not determine file name ... file may had been deleted or name changed ...')
+            # SN07072019 <-end
             else:
                 render_pages(target, mode=mode, bypass_errors=True,
                             only_page=only_page, es_upload=es_upload)
@@ -1085,14 +1097,22 @@ def main(cli_args):
             content_static = True
             template_static = True
 
-
         logger.info("rendering %s..." % mode)
-        render_pages(target=target,
-                     bypass_errors=cli_args.bypass_errors,
-                     only_page=cli_args.only,
-                     mode=mode,
-                     es_upload=cli_args.es_upload,
-        )
+        if cli_args.only == "*.md": #SN07072019 start ->
+            # special mode to build all site and then watch for unique file changes
+            render_pages(target=target,
+                        bypass_errors=cli_args.bypass_errors,
+                        only_page="",
+                        mode=mode,
+                        es_upload=cli_args.es_upload,
+            )
+        else: #SN07072019 <-end
+            render_pages(target=target,
+                        bypass_errors=cli_args.bypass_errors,
+                        only_page=cli_args.only,
+                        mode=mode,
+                        es_upload=cli_args.es_upload,
+            )
         logger.info("done rendering %s" % mode)
         if content_static or template_static:
             logger.info("outputting static files...")
