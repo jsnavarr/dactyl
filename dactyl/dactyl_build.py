@@ -907,6 +907,19 @@ def watch(mode, target, only_page="", pdf_file=DEFAULT_PDF_FILE,
             if mode == "pdf":
                 make_pdf(pdf_file, target=target, bypass_errors=True,
                     only_page=only_page, es_upload=es_upload)
+            # SN07062019 ->start
+            elif event.src_path[-4:]=='.css' or event.src_path[-3:]=='.js':
+                # do not check for files modified in "out" folder
+                if os.path.exists(config['out_path']+"/"+event.src_path):
+                    try:
+                        copy_file(event.src_path, config['out_path']+"/"+event.src_path)
+                    except IOError as e:
+                        print("Unable to copy file. %s" % e)
+                    else:
+                        print('File {} has been copied to {} folder'.format(event.src_path, config['out_path']))
+                else:
+                    print("Couldn't copy the modified file ... verify that out folder is correct")
+            # SN07062019 ->end
             else:
                 render_pages(target, mode=mode, bypass_errors=True,
                             only_page=only_page, es_upload=es_upload)
@@ -914,12 +927,15 @@ def watch(mode, target, only_page="", pdf_file=DEFAULT_PDF_FILE,
 
     patterns = ["*template-*.html",
                 "*.md",
-                "*code_samples/*"]
+                "*code_samples/*",
+                "*.css", #SN07062019
+                "*.js"] #SN07062019
 
     event_handler = UpdaterHandler(patterns=patterns)
     observer = Observer()
     observer.schedule(event_handler, config["template_path"], recursive=True)
     observer.schedule(event_handler, config["content_path"], recursive=True)
+    observer.schedule(event_handler, config["template_static_path"], recursive=True) #SN07062019
     observer.start()
     # The above starts an observing thread,
     #   so the main thread can just wait
